@@ -1,42 +1,6 @@
-FROM alpine:3.16
+FROM wordpress:6.4-php8.2-fpm
 
+# Forzo php-fpm ad ascoltare su TCP invece che su socket
+RUN sed -i 's|^listen = .*|listen = 0.0.0.0:9000|' /usr/local/etc/php-fpm.d/www.conf \
+ && sed -i 's|^listen = .*|; disabled by custom Dockerfile|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
-RUN apk update && apk add --no-cache \
-    php81 \
-    php81-fpm \
-    php81-mysqli \
-    php81-json \
-    php81-curl \
-    php81-dom \
-    php81-exif \
-    php81-fileinfo \
-    php81-mbstring \
-    php81-openssl \
-    php81-xml \
-    php81-zip \
-    php81-redis \
-    wget \
-    unzip
-
-
-RUN mkdir -p /var/www/html \
-    /run/php
-
-
-RUN wget https://wordpress.org/latest.tar.gz -P /tmp \
-    && tar -xzf /tmp/latest.tar.gz -C /tmp \
-    && cp -r /tmp/wordpress/* /var/www/html/ \
-    && rm -rf /tmp/wordpress /tmp/latest.tar.gz
-
-
-COPY conf/www.conf /etc/php81/php-fpm.d/www.conf
-COPY tools/setup.sh /setup.sh
-RUN chmod +x /setup.sh
-
-
-RUN chown -R nobody:nobody /var/www/html
-
-
-EXPOSE 9000
-
-CMD ["/setup.sh"]

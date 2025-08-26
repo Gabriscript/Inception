@@ -1,26 +1,15 @@
-FROM alpine:3.16
-
-
-RUN apk update && apk add --no-cache \
-    nginx \
-    openssl
-
-
-RUN mkdir -p /var/run/nginx \
-    /var/www/html \
-    /etc/nginx/ssl
-
-
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/inception.key \
-    -out /etc/nginx/ssl/inception.crt \
-    -subj "/C=IT/ST=State/L=City/O=42School/CN=localhost"
-
+FROM nginx:1.18
 
 COPY conf/nginx.conf /etc/nginx/nginx.conf
+COPY tools/ssl_setup.sh /usr/local/bin/ssl_setup.sh
+RUN chmod +x /usr/local/bin/ssl_setup.sh
 
+RUN mkdir -p /etc/nginx/ssl
 
-EXPOSE 443
-
+# Genera i certificati durante il build
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/nginx.key \
+    -out /etc/nginx/ssl/nginx.crt \
+    -subj "/C=IT/ST=Italy/L=Rome/O=42/CN=localhost"
 
 CMD ["nginx", "-g", "daemon off;"]
