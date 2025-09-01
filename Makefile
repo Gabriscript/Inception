@@ -1,78 +1,52 @@
-NAME = inception
+DOCKER_COMPOSE_FILE := ./srcs/docker-compose.yml
+ENV_FILE := srcs/.env
+DATA_DIR := $(HOME)/data
+WORDPRESS_DATA_DIR := $(DATA_DIR)/wordpress
+MARIADB_DATA_DIR := $(DATA_DIR)/mariadb
 
+name = inception
 
-DATA_DIR = /home/${USER}/data
+all: create_dirs up
 
-all: up
+build: create_dirs
+	@printf "Building configuration ${name}...\n"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) build
 
-up: build
-	@echo "Creating data directories..."
-	@mkdir -p $(DATA_DIR)/mysql
-	@mkdir -p $(DATA_DIR)/wordpress
-	@echo "Starting containers..."
-	@docker-compose -f srcs/docker-compose.yml up -d
-	@echo "✅ Inception is running!"
-	@echo "Access your site at: https://$(shell whoami).42.fr"
-
-build:
-	@echo "Building Docker images..."
-	@docker-compose -f srcs/docker-compose.yml build
+up:
+	@printf "Starting configuration ${name}...\n"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) up -d
 
 down:
-	@echo "Stopping containers (data preserved)..."
-	@docker-compose -f srcs/docker-compose.yml down
+	@printf "Stopping configuration ${name}...\n"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) down
 
-stop:
-	@echo "Stopping containers..."
-	@docker-compose -f srcs/docker-compose.yml stop
-
-start:
-	@echo "Starting containers..."
-	@docker-compose -f srcs/docker-compose.yml start
-
+re: fclean all 
 
 clean: down
-	@echo "Cleaning Docker images and cache..."
+	@printf "Cleaning configuration ${name}...\n"
 	@docker system prune -af
-	@docker image prune -af
+	@sudo rm -rf $(WORDPRESS_DATA_DIR)/
+	@sudo rm -rf $(MARIADB_DATA_DIR)/
 
-
-fclean: clean
-	@echo "⚠️  DESTROYING ALL DATA - Full clean for evaluation..."
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-	@sudo rm -rf $(DATA_DIR)
-	@echo "💥 All data destroyed. Ready for fresh evaluation."
-
-
-re: fclean all
-
+fclean: down
+	@printf "Total clean of all configurations docker\n"
+	@docker system prune --all --force --volumes
+	@docker network prune --force
+	@docker volume prune --force
+	@sudo rm -rf $(DATA_DIR)/  
 
 logs:
-	@docker-compose -f srcs/docker-compose.yml logs
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) --env-file $(ENV_FILE) logs -f
 
-ps:
-	@docker-compose -f srcs/docker-compose.yml ps
-
-
-status:
-	@echo "=== DOCKER CONTAINERS ==="
-	@docker ps
-	@echo "\n=== DOCKER VOLUMES ==="
+status:  # ✅ AGGIUNTO: comando utile per debugging
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) ps
 	@docker volume ls
-	@echo "\n=== DOCKER NETWORKS ==="
 	@docker network ls
-	@echo "\n=== DATA DIRECTORIES ==="
-	@ls -la $(DATA_DIR) 2>/dev/null || echo "No data directory found"
 
+create_dirs:
+	@printf "Creating data directories for ggargani...\n"
+	@mkdir -p $(WORDPRESS_DATA_DIR)
+	@mkdir -p $(MARIADB_DATA_DIR)
+	@sudo chown -R $(USER):$(USER) $(DATA_DIR)  
 
-help:
-	@echo "Inception Makefile Commands:"
-	@echo "  make / make all  : Build and start all services"
-	@echo "  make down        : Stop containers (SAFE - preserves data)"
-	@echo "  make clean       : Remove images (SAFE - preserves data)"  
-	@echo "  make fclean      : DESTROY EVERYTHING (for evaluation)"
-	@echo "  make re          : Full rebuild (fclean + all)"
-	@echo "  make logs        : Show container logs"
-	@echo "  make status      : Show system status"
-
-.PHONY: all up build down stop start clean fclean re logs ps status help
+.PHONY: all build up down re clean fclean logs status create_dirs

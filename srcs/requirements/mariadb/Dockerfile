@@ -1,7 +1,9 @@
-FROM mariadb:10.11
+FROM alpine:3.20.6
 
-COPY conf/50-server.cnf /etc/mysql/conf.d/
+RUN apk update && apk add mariadb mariadb-client bash
 
-EXPOSE 3306
+COPY tools/mariadb-entrypoint.sh /usr/local/bin/
 
-CMD ["mysqld"]
+RUN chmod +x /usr/local/bin/mariadb-entrypoint.sh
+
+ENTRYPOINT [ "mariadb-entrypoint.sh" ]

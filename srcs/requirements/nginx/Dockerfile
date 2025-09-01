@@ -1,15 +1,16 @@
-FROM nginx:1.18
+# Use the specified version of Alpine
+FROM alpine:3.19.2
 
-COPY conf/nginx.conf /etc/nginx/nginx.conf
-COPY tools/ssl_setup.sh /usr/local/bin/ssl_setup.sh
-RUN chmod +x /usr/local/bin/ssl_setup.sh
+# Install Nginx, OpenSSL, and Bash
+RUN apk update && \
+    apk add nginx openssl bash
 
-RUN mkdir -p /etc/nginx/ssl
+# Copy the executable script for Nginx configuration
+COPY tools/nginx-entrypoint.sh /usr/local/bin/
 
-# Genera i certificati durante il build
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/nginx.key \
-    -out /etc/nginx/ssl/nginx.crt \
-    -subj "/C=IT/ST=Italy/L=Rome/O=42/CN=localhost"
+# Change permissions of the executable file and create necessary directories
+RUN chmod +x /usr/local/bin/nginx-entrypoint.sh && \
+    mkdir -p /etc/nginx/ssl
 
-CMD ["nginx", "-g", "daemon off;"]
+# Set the entrypoint script for the container
+ENTRYPOINT [ "nginx-entrypoint.sh" ]

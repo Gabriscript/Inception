@@ -1,67 +1,62 @@
+
+version: '3.8'
+
 services:
   mariadb:
-    build:
-      context: ./requirements/mariadb
-      dockerfile: Dockerfile
+    build: requirements/mariadb
     container_name: mariadb
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env
     volumes:
       - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     networks:
       - inception_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
-      timeout: 20s
-      retries: 10
-      start_period: 30s
-
-  wordpress:
-    build:
-      context: ./requirements/wordpress
-      dockerfile: Dockerfile
-    container_name: wordpress
-    depends_on:
-      mariadb:
-        condition: service_healthy
-    environment:
-      WORDPRESS_DB_HOST: mariadb:3306
-      WORDPRESS_DB_NAME: ${DB_NAME}
-      WORDPRESS_DB_USER: ${DB_USER}
-      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
-      WORDPRESS_CONFIG_EXTRA: |
-        define('WP_HOME', 'https://${DOMAIN_NAME}');
-        define('WP_SITEURL', 'https://${DOMAIN_NAME}');
-    volumes:
-      - wordpress_data:/var/www/html
-    networks:
-      - inception_network
+    restart: unless-stopped 
 
   nginx:
-    build:
-      context: ./requirements/nginx
-      dockerfile: Dockerfile
+    build: requirements/nginx
     container_name: nginx
-    depends_on:
-      - wordpress
-    ports:
-      - "443:443"
-    environment:
-      DOMAIN_NAME: ${DOMAIN_NAME}
+    env_file:
+      - .env
     volumes:
       - wordpress_data:/var/www/html
-      - /var/run/php:/var/run/php
+    ports:
+      - "443:443"
+    depends_on:
+      - wordpress
     networks:
       - inception_network
+    restart: unless-stopped 
 
-volumes:
-  mariadb_data:
-  wordpress_data:
+  wordpress:
+    build: requirements/wordpress
+    container_name: wordpress
+    env_file:
+      - .env
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - mariadb
+    networks:
+      - inception_network
+    restart: unless-stopped  
 
 networks:
   inception_network:
     driver: bridge
 
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/mariadb
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/wordpress
