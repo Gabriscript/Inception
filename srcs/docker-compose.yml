@@ -8,6 +8,8 @@ services:
       - .env
     volumes:
       - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     networks:
       - inception_network
     restart: unless-stopped 
