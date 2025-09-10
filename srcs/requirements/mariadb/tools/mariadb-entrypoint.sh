@@ -46,4 +46,3 @@ fi
 # Start MariaDB in foreground
 echo "Starting MariaDB in foreground..."
 exec mysqld_safe
-
